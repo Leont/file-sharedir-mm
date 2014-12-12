@@ -1,4 +1,4 @@
-package File::Sharedir::MM;
+package File::ShareDir::MM;
 
 use strict;
 use warnings;
