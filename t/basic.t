@@ -4,7 +4,8 @@ use warnings;
 use Test::More tests => 4;
 use Test::TempDir::Tiny qw(tempdir);
 use Path::Tiny qw(path);
-use Capture::Tiny qw( capture );
+use IPC::Open3;
+use Symbol 'gensym';
 use Env qw(@PERL5LIB $PERL_MM_OPT);
 
 # ABSTRACT: Test basic behaviour
@@ -69,21 +70,34 @@ chdir $source;
 END { chdir $pwd }
 
 sub run_ok {
-    my ( $out, $err, $exit ) = &capture( $_[1] );
-    note explain { 'stdout' => $out, 'stderr' => $err, exit => $exit };
-    return cmp_ok( $exit, '==', 0, "Run OK: $_[0]" );
+	my (@command) = @_;
+	my $desc = join ' ', @command;
+	local $Test::Builder::Level = $Test::Builder::Level + 1;
+
+	my ($inh, $outh, $errh) = (undef, undef, gensym);
+	my $pid = open3($inh, $outh, $errh, @command) or do {
+		fail "Command $desc: $!";
+		return;
+	};
+	close $inh;
+
+	my $out = do { local $/; <$outh> };
+	my $err = do { local $/; <$errh> };
+
+	waitpid $pid, 0 or die 'Couldn\'t waitpid';
+    return cmp_ok( $?, '==', 0, "Command $desc" ) || note explain { 'stdout' => $out, 'stderr' => $err, exit => $? }
 }
 
 # Testing happens here:
 SKIP: {
 
-    run_ok( "Configure" => sub { system $^X, 'Makefile.PL' } )
+    run_ok($^X, 'Makefile.PL')
       or skip "as configure should pass first", 3;
 
-    run_ok( "Make" => sub { system 'make' } )
+    run_ok('make')
       or skip "as make should pass first", 2;
 
-    run_ok( "Make Install" => sub { system 'make', 'install' } )
+    run_ok('make', 'install')
       or skip "as make install should pass first", 1;
 
     ok(
@@ -93,4 +107,5 @@ SKIP: {
         'dotfile in a dotdir installed'
     );
 }
+
 done_testing;
