@@ -5,7 +5,7 @@ use Test::More tests => 4;
 use Test::TempDir::Tiny qw(tempdir);
 use Path::Tiny qw(path);
 use Capture::Tiny qw( capture );
-use Env qw(@PERL5LIB);
+use Env qw(@PERL5LIB $PERL_MM_OPT);
 
 # ABSTRACT: Test basic behaviour
 
@@ -14,7 +14,7 @@ my $pwd     = Path::Tiny->cwd;
 
 # Make sure install target is prepped.
 unshift @PERL5LIB, $install, $pwd->child('lib');
-$ENV{PERL_MM_OPT} = "INSTALL_BASE=$install";
+$PERL_MM_OPT = "INSTALL_BASE=$install";
 
 # Prep the source tree
 my $source = tempdir('source');
